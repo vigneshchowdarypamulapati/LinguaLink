@@ -5,9 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
+      - 'frontend/**'
       - '.github/workflows/deploy-frontend.yml'
 
 jobs:
@@ -24,9 +22,11 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
+        working-directory: frontend
         run: npm install
 
       - name: Build
+        working-directory: frontend
         run: npm run build
 
       - name: Deploy to Firebase Hosting
