@@ -21,7 +21,7 @@ const mongoose = require("mongoose");
 app.use(express.json());
 
 const mongourl = process.env.MONGO_URL || 
-  "mongodb+srv://vignesh:Vignesh27@cluster0.djtreds.mongodb.net/NLP";
+  "mongodb+srv://vignesh:Vignesh27@cluster0.djtreds.mongodb.net/NLP?retryWrites=true&w=majority";
 
 mongoose
   .connect(mongourl, {

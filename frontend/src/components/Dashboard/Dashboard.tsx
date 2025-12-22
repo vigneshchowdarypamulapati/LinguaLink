@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Languages, MessageSquare, Bot, ArrowRight, Clock, Star } from 'lucide-react';
+import { Languages, MessageSquare, Bot, ArrowRight, Clock, Star, LogOut, Settings, Sun, Moon, Globe } from 'lucide-react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { useTheme } from '../../context/ThemeContext';
 import { API_BASE_URL } from '../../config/api';
 
 
@@ -33,13 +34,12 @@ const item = {
     show: { opacity: 1, y: 0 }
 };
 
-import WorkspaceDashboard from './WorkspaceDashboard';
-
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { currentWorkspace } = useWorkspace();
+    const { isDarkMode, toggleTheme } = useTheme();
     const [recentHistory, setRecentHistory] = useState<HistoryItem[]>([]);
 
     const isNewUser = location.state?.isNewUser;
@@ -63,138 +63,216 @@ const Dashboard: React.FC = () => {
         }
     }, [user, currentWorkspace]);
 
-    // If a workspace is active, show the Workspace Dashboard instead
-    if (currentWorkspace) {
-        return <WorkspaceDashboard />;
-    }
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+    };
 
     const features = [
         {
             title: "Translator",
-            description: "Translate text, documents, and audio instantly.",
+            description: "Translate text, documents, and audio instantly with AI-powered accuracy.",
             icon: Languages,
             path: "/translator",
-            color: "from-cyan-500 to-blue-500",
-            bg: "bg-cyan-500/10",
-            text: "text-cyan-500"
+            iconBg: "bg-cyan-100 dark:bg-cyan-900/30",
+            iconColor: "text-cyan-600 dark:text-cyan-400"
         },
         {
             title: "Bilingual Chat",
-            description: "Real-time conversation mode for two people.",
+            description: "Real-time conversation mode for seamless multilingual communication.",
             icon: MessageSquare,
             path: "/chat",
-            color: "from-purple-500 to-pink-500",
-            bg: "bg-purple-500/10",
-            text: "text-purple-500"
+            iconBg: "bg-purple-100 dark:bg-purple-900/30",
+            iconColor: "text-purple-600 dark:text-purple-400"
         },
         {
             title: "AI Assistant",
-            description: "Chat with Gemini AI for explanations and help.",
+            description: "Chat with Gemini AI for translations, explanations, and language help.",
             icon: Bot,
             path: "/ai-chat",
-            color: "from-emerald-500 to-teal-500",
-            bg: "bg-emerald-500/10",
-            text: "text-emerald-500"
+            iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
+            iconColor: "text-emerald-600 dark:text-emerald-400"
         }
     ];
 
     return (
-        <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="h-full overflow-y-auto p-4 md:p-8 pt-20 md:pt-8 pb-24 space-y-8 custom-scrollbar"
-        >
-            {/* Welcome Section */}
-            <motion.div variants={item} className="relative overflow-hidden rounded-3xl p-8 md:p-12 shadow-xl bg-gradient-to-r from-primary to-secondary text-white">
-                <div className="relative z-10">
-                    <h1 className="text-3xl md:text-5xl font-bold mb-4 text-primary-foreground">
-                        {isNewUser ? 'Welcome' : 'Welcome back'}, {user?.fname || 'Guest'}! {isNewUser ? '🎉' : '👋'}
-                    </h1>
-                    <p className="text-lg max-w-2xl text-primary-foreground/80">
-                        Ready to break some language barriers today? Choose a tool below to get started.
-                    </p>
-                </div>
-                {/* Decorative circles */}
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
-            </motion.div>
-
-            {/* Quick Actions */}
-            <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {features.map((feature, index) => (
-                    <div
-                        key={index}
-                        onClick={() => navigate(feature.path)}
-                        className="group p-6 rounded-2xl border border-app-border bg-app-surface transition-all cursor-pointer hover:shadow-lg hover:border-accent/20"
-                    >
-                        <div className={`w-12 h-12 rounded-xl mb-4 flex items-center justify-center ${feature.bg} ${feature.text}`}>
-                            <feature.icon size={24} />
-                        </div>
-                        <h3 className="text-xl font-bold mb-2 text-app-text">{feature.title}</h3>
-                        <p className="mb-4 text-app-text-muted">{feature.description}</p>
-                        <div className="flex items-center font-medium text-primary group-hover:text-accent transition-colors">
-                            Try now <ArrowRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
-                        </div>
-                    </div>
-                ))}
-            </motion.div>
-
-            {/* Recent Activity */}
-            <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="card p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold flex items-center text-app-text">
-                            <Clock className="mr-2 text-primary" size={20} />
-                            Recent Translations
-                        </h2>
-                        <button onClick={() => navigate('/translator')} className="text-sm text-primary hover:text-accent font-medium">
-                            View All
-                        </button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {recentHistory.length > 0 ? (
-                            recentHistory.map((item) => (
-                                <div key={item._id} className="flex items-center p-3 rounded-xl transition-colors bg-app-bg hover:bg-app-surface/50">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center text-xs text-app-text-muted mb-1">
-                                            <span className="uppercase">{item.sourceLang}</span>
-                                            <ArrowRight size={12} className="mx-1" />
-                                            <span className="uppercase">{item.targetLang}</span>
-                                        </div>
-                                        <p className="text-sm truncate text-app-text">{item.original}</p>
-                                        <p className="text-app-text-muted text-sm truncate">{item.translated}</p>
-                                    </div>
-                                    {item.isFavorite && <Star size={16} className="text-warning ml-3 flex-shrink-0" fill="currentColor" />}
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-8 text-app-text-muted">
-                                No recent activity
+        <div className="min-h-screen bg-[var(--color-bg)]">
+            {/* Navigation Bar */}
+            <nav className="sticky top-0 z-50 w-full border-b border-[var(--color-border)] bg-[var(--color-card)]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between h-16 items-center">
+                        {/* Logo */}
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-primary-800 dark:bg-accent-500 rounded-xl flex items-center justify-center">
+                                <Globe className="w-5 h-5 text-white dark:text-primary-900" />
                             </div>
-                        )}
-                    </div>
-                </div>
+                            <span className="text-xl font-bold text-[var(--color-text-primary)]">LinguaLink</span>
+                        </div>
 
-                {/* Pro Tip / Info Card */}
-                <div className="border rounded-2xl p-6 flex flex-col justify-center relative overflow-hidden bg-gradient-to-br from-app-surface to-app-bg border-app-border shadow-sm">
-                    <div className="relative z-10">
-                        <h3 className="text-xl font-bold mb-2 text-app-text">Did you know? 💡</h3>
-                        <p className="mb-4 text-app-text-muted">
-                            You can upload PDF documents directly to the Translator and get them translated instantly while keeping the formatting!
-                        </p>
-                        <button
-                            onClick={() => navigate('/translator')}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-primary hover:bg-secondary text-primary-foreground shadow-lg shadow-primary/20"
-                        >
-                            Try Document Translation
-                        </button>
+                        {/* Right side */}
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={toggleTheme}
+                                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                aria-label="Toggle theme"
+                            >
+                                {isDarkMode ? (
+                                    <Sun className="w-5 h-5 text-amber-500" />
+                                ) : (
+                                    <Moon className="w-5 h-5 text-slate-600" />
+                                )}
+                            </button>
+                            <button
+                                onClick={() => navigate('/settings')}
+                                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <Settings className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Sign out
+                            </button>
+                        </div>
                     </div>
-                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl bg-primary/5" />
                 </div>
-            </motion.div>
-        </motion.div>
+            </nav>
+
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <motion.div
+                    variants={container}
+                    initial="hidden"
+                    animate="show"
+                    className="space-y-8"
+                >
+                    {/* Welcome Section */}
+                    <motion.div
+                        variants={item}
+                        className="relative overflow-hidden rounded-2xl p-8 md:p-12 bg-primary-800 dark:bg-slate-800 text-white shadow-lg"
+                    >
+                        <div className="relative z-10">
+                            <h1 className="text-3xl md:text-4xl font-bold mb-3">
+                                {isNewUser ? 'Welcome' : 'Welcome back'}, {user?.fname || 'there'}! {isNewUser ? '🎉' : '👋'}
+                            </h1>
+                            <p className="text-lg text-white/80 max-w-2xl">
+                                Ready to break some language barriers today? Choose a tool below to get started.
+                            </p>
+                        </div>
+                        {/* Decorative elements */}
+                        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
+                        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-48 h-48 rounded-full bg-accent-500/20 blur-3xl" />
+                    </motion.div>
+
+                    {/* Feature Cards */}
+                    <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {features.map((feature, index) => (
+                            <div
+                                key={index}
+                                onClick={() => navigate(feature.path)}
+                                className="card p-6 cursor-pointer hover:shadow-elevated transition-all group"
+                            >
+                                <div className={`w-12 h-12 rounded-xl mb-4 flex items-center justify-center ${feature.iconBg}`}>
+                                    <feature.icon className={`w-6 h-6 ${feature.iconColor}`} />
+                                </div>
+                                <h3 className="text-xl font-semibold mb-2 text-[var(--color-text-primary)]">
+                                    {feature.title}
+                                </h3>
+                                <p className="text-[var(--color-text-secondary)] mb-4 text-sm leading-relaxed">
+                                    {feature.description}
+                                </p>
+                                <div className="flex items-center text-accent-500 font-medium text-sm group-hover:text-accent-600 transition-colors">
+                                    Get started
+                                    <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
+                                </div>
+                            </div>
+                        ))}
+                    </motion.div>
+
+                    {/* Recent Activity */}
+                    <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Recent Translations */}
+                        <div className="card p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-semibold flex items-center text-[var(--color-text-primary)]">
+                                    <Clock className="mr-2 w-5 h-5 text-accent-500" />
+                                    Recent Translations
+                                </h2>
+                                <button
+                                    onClick={() => navigate('/translator')}
+                                    className="text-sm text-accent-500 hover:text-accent-600 font-medium"
+                                >
+                                    View all
+                                </button>
+                            </div>
+                            {recentHistory.length > 0 ? (
+                                <div className="space-y-4">
+                                    {recentHistory.map((translation) => (
+                                        <div
+                                            key={translation._id}
+                                            className="p-4 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]"
+                                        >
+                                            <p className="text-sm text-[var(--color-text-primary)] line-clamp-1 mb-1">
+                                                {translation.original}
+                                            </p>
+                                            <p className="text-sm text-[var(--color-text-secondary)] line-clamp-1">
+                                                → {translation.translated}
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="text-xs text-[var(--color-text-secondary)]">
+                                                    {translation.sourceLang} → {translation.targetLang}
+                                                </span>
+                                                {translation.isFavorite && (
+                                                    <Star className="w-3 h-3 text-amber-500 fill-current" />
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <Languages className="w-12 h-12 text-[var(--color-text-secondary)] mx-auto mb-3 opacity-50" />
+                                    <p className="text-[var(--color-text-secondary)]">No translations yet</p>
+                                    <button
+                                        onClick={() => navigate('/translator')}
+                                        className="mt-4 btn-accent text-sm px-4 py-2"
+                                    >
+                                        Start translating
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Quick Stats */}
+                        <div className="card p-6">
+                            <h2 className="text-lg font-semibold mb-6 text-[var(--color-text-primary)]">
+                                Quick Stats
+                            </h2>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
+                                    <p className="text-2xl font-bold text-accent-500">{recentHistory.length}</p>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">Recent translations</p>
+                                </div>
+                                <div className="p-4 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
+                                    <p className="text-2xl font-bold text-emerald-500">10+</p>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">Languages supported</p>
+                                </div>
+                                <div className="p-4 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
+                                    <p className="text-2xl font-bold text-purple-500">AI</p>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">Powered by Gemini</p>
+                                </div>
+                                <div className="p-4 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
+                                    <p className="text-2xl font-bold text-primary-800 dark:text-accent-400">∞</p>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">Possibilities</p>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            </main>
+        </div>
     );
 };
 
