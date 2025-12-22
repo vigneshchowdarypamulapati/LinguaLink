@@ -21,3 +21,5 @@ ENV PORT=8080
 
 # Start the server
 CMD ["npm", "start"]
+
+# Blaze upgrade test
