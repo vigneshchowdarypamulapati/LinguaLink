@@ -1,7 +1,20 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-app.use(cors());
+
+// CORS configuration for production and development
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://lingualink-422af.web.app',
+    'https://lingualink-422af.firebaseapp.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 const mongoose = require("mongoose");
 app.use(express.json());
 
