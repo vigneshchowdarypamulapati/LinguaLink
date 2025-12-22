@@ -49,7 +49,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setUser(res.data.user);
                 return null; // No error
             } else {
-                return res.data; // Return error message
+                // Ensure we always return a string
+                if (typeof res.data === 'string') {
+                    return res.data;
+                } else if (res.data && res.data.message) {
+                    return res.data.message;
+                } else {
+                    return "Login failed. Please check your credentials.";
+                }
             }
         } catch (error) {
             console.error("Login error", error);
