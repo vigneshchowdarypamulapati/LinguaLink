@@ -8,7 +8,8 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [isDarkMode, setIsDarkMode] = useState(true);
+    // Default to light mode
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
     useEffect(() => {
         const saved = localStorage.getItem('theme');
@@ -19,7 +20,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     useEffect(() => {
         localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-        document.documentElement.classList.toggle('dark', isDarkMode);
+        if (isDarkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
     }, [isDarkMode]);
 
     const toggleTheme = () => setIsDarkMode(!isDarkMode);
