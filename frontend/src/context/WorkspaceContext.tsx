@@ -14,7 +14,7 @@ interface WorkspaceContextType {
     workspaces: Workspace[];
     currentWorkspace: Workspace | null;
     isLoading: boolean;
-    createWorkspace: (name: string) => Promise<void>;
+    createWorkspace: (name: string) => Promise<string>;
     switchWorkspace: (workspaceId: string) => void;
     inviteMember: (email: string) => Promise<string | null>;
     deleteWorkspace: (workspaceId: string) => Promise<void>;
@@ -74,12 +74,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
     };
 
-    const createWorkspace = async (name: string) => {
+    const createWorkspace = async (name: string): Promise<string> => {
         try {
             const res = await axios.post(`${API_BASE_URL}/api/workspaces`, { name }, { withCredentials: true });
             setWorkspaces([...workspaces, res.data]);
             setCurrentWorkspace(res.data); // Switch to new workspace
             localStorage.setItem('currentWorkspaceId', res.data._id);
+            return res.data._id; // Return the new workspace ID
         } catch (error) {
             console.error("Failed to create workspace", error);
             throw error;

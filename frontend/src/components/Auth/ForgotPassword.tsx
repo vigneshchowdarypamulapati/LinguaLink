@@ -15,12 +15,19 @@ const ForgotPassword: React.FC = () => {
         setStatus('loading');
         setMessage('');
         try {
-            await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email });
-            setStatus('success');
-            setMessage('Recovery email sent! Please check your inbox.');
+            // Call backend directly to bypass proxy issues
+            const backendUrl = import.meta.env.DEV ? 'http://localhost:8000' : API_BASE_URL;
+            const response = await axios.post(`${backendUrl}/auth/forgot-password`, { email });
+            if (response.data.status === 'success') {
+                setStatus('success');
+                setMessage(response.data.message || 'Recovery email sent! Please check your inbox.');
+            } else {
+                setStatus('error');
+                setMessage(response.data.message || 'Failed to send recovery email.');
+            }
         } catch (error: any) {
             setStatus('error');
-            setMessage(error.response?.data?.error || 'Failed to send recovery email.');
+            setMessage(error.response?.data?.message || 'Failed to send recovery email.');
         }
     };
 

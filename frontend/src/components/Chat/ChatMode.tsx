@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config/api';
-import { Send, Volume2, MessageSquare } from 'lucide-react';
+import { Send, Volume2, MessageSquare, Trash2 } from 'lucide-react';
 
 interface Message {
     id: string;
@@ -30,6 +30,26 @@ const ChatMode: React.FC = () => {
         scrollToBottom();
     }, [messages]);
 
+    // Load chat history on mount
+    useEffect(() => {
+        const loadMessages = async () => {
+            try {
+                const res = await axios.get(`${API_BASE_URL}/api/bilingual-chat`, { withCredentials: true });
+                const loadedMessages = res.data.map((msg: any) => ({
+                    id: msg._id,
+                    sender: msg.sender,
+                    original: msg.original,
+                    translated: msg.translated,
+                    timestamp: new Date(msg.createdAt)
+                }));
+                setMessages(loadedMessages);
+            } catch (error) {
+                console.error("Failed to load chat history:", error);
+            }
+        };
+        loadMessages();
+    }, []);
+
     const handleSendMessage = async (sender: 'A' | 'B', text: string) => {
         if (!text.trim()) return;
 
@@ -44,11 +64,20 @@ const ChatMode: React.FC = () => {
                 sourceLang,
                 targetLang,
             });
-            const translatedText = res.data.translatedText;
+            const translatedText = res.data.translated;
+
+            // Save to database
+            const saveRes = await axios.post(`${API_BASE_URL}/api/bilingual-chat`, {
+                sender,
+                original: text,
+                translated: translatedText,
+                sourceLang,
+                targetLang
+            }, { withCredentials: true });
 
             // Add to messages
             const newMessage: Message = {
-                id: Date.now().toString(),
+                id: saveRes.data._id || Date.now().toString(),
                 sender,
                 original: text,
                 translated: translatedText,
@@ -70,6 +99,16 @@ const ChatMode: React.FC = () => {
         }
     };
 
+    const handleClearChat = async () => {
+        if (!confirm('Are you sure you want to clear all chat messages?')) return;
+        try {
+            await axios.delete(`${API_BASE_URL}/api/bilingual-chat`, { withCredentials: true });
+            setMessages([]);
+        } catch (error) {
+            console.error("Failed to clear chat:", error);
+        }
+    };
+
     const playTTS = async (text: string) => {
         try {
             const res = await axios.post(`${API_BASE_URL}/api/tts`, { text }, { responseType: 'blob' });
@@ -81,13 +120,24 @@ const ChatMode: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen p-4 md:p-8 relative flex flex-col">
+        <div className="min-h-screen p-4 md:p-8 relative flex flex-col bg-slate-900">
 
 
             <header className="text-center space-y-2 mb-8 pt-8 md:pt-0">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow-lg flex items-center justify-center">
-                    <MessageSquare className="mr-3 text-cyan-400" /> Conversation Mode
-                </h1>
+                <div className="flex items-center justify-center gap-4">
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow-lg flex items-center">
+                        <MessageSquare className="mr-3 text-cyan-400" /> Conversation Mode
+                    </h1>
+                    {messages.length > 0 && (
+                        <button
+                            onClick={handleClearChat}
+                            className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 transition-colors"
+                            title="Clear chat history"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
             </header>
 
             <div className="flex-1 max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 h-[calc(100vh-200px)]">
@@ -108,8 +158,8 @@ const ChatMode: React.FC = () => {
                     <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-black/20">
                         {messages.filter(m => m.sender === 'A').map(msg => (
                             <div key={msg.id} className="flex flex-col items-end">
-                                <div className="bg-cyan-600/80 text-white p-3 rounded-2xl rounded-tr-none max-w-[90%]">
-                                    <p>{msg.original}</p>
+                                <div className="bg-cyan-600/80 p-3 rounded-2xl rounded-tr-none max-w-[90%]">
+                                    <p className="text-white font-medium">{msg.original}</p>
                                 </div>
                                 <div className="text-xs text-slate-400 mt-1 flex items-center">
                                     <span className="mr-2 italic">{msg.translated}</span>
@@ -119,8 +169,8 @@ const ChatMode: React.FC = () => {
                         ))}
                         {messages.filter(m => m.sender === 'B').map(msg => (
                             <div key={msg.id} className="flex flex-col items-start opacity-75">
-                                <div className="bg-slate-700/50 text-slate-200 p-3 rounded-2xl rounded-tl-none max-w-[90%] border border-white/5">
-                                    <p>{msg.translated}</p>
+                                <div className="bg-slate-700/50 p-3 rounded-2xl rounded-tl-none max-w-[90%] border border-white/5">
+                                    <p className="text-slate-200 font-medium">{msg.translated}</p>
                                 </div>
                                 <div className="text-xs text-slate-500 mt-1">
                                     Received ({langA})
@@ -134,7 +184,7 @@ const ChatMode: React.FC = () => {
                         <div className="flex space-x-2">
                             <input
                                 type="text"
-                                className="flex-1 bg-black/20 border border-white/10 rounded-full px-4 py-2 text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                                className="flex-1 bg-black/50 border border-white/10 rounded-full px-4 py-2 text-white font-medium focus:outline-none focus:border-cyan-500 transition-colors"
                                 placeholder={`Type in ${langA}...`}
                                 value={inputA}
                                 onChange={(e) => setInputA(e.target.value)}
@@ -172,8 +222,8 @@ const ChatMode: React.FC = () => {
                     <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-black/20">
                         {messages.filter(m => m.sender === 'B').map(msg => (
                             <div key={msg.id} className="flex flex-col items-end">
-                                <div className="bg-purple-600/80 text-white p-3 rounded-2xl rounded-tr-none max-w-[90%]">
-                                    <p>{msg.original}</p>
+                                <div className="bg-purple-600/80 p-3 rounded-2xl rounded-tr-none max-w-[90%]">
+                                    <p className="text-white font-medium">{msg.original}</p>
                                 </div>
                                 <div className="text-xs text-slate-400 mt-1 flex items-center">
                                     <span className="mr-2 italic">{msg.translated}</span>
@@ -183,8 +233,8 @@ const ChatMode: React.FC = () => {
                         ))}
                         {messages.filter(m => m.sender === 'A').map(msg => (
                             <div key={msg.id} className="flex flex-col items-start opacity-75">
-                                <div className="bg-slate-700/50 text-slate-200 p-3 rounded-2xl rounded-tl-none max-w-[90%] border border-white/5">
-                                    <p>{msg.translated}</p>
+                                <div className="bg-slate-700/50 p-3 rounded-2xl rounded-tl-none max-w-[90%] border border-white/5">
+                                    <p className="text-slate-200 font-medium">{msg.translated}</p>
                                 </div>
                                 <div className="text-xs text-slate-500 mt-1">
                                     Received ({langB})
@@ -197,7 +247,7 @@ const ChatMode: React.FC = () => {
                         <div className="flex space-x-2">
                             <input
                                 type="text"
-                                className="flex-1 bg-black/20 border border-white/10 rounded-full px-4 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                                className="flex-1 bg-black/50 border border-white/10 rounded-full px-4 py-2 text-white font-medium focus:outline-none focus:border-purple-500 transition-colors"
                                 placeholder={`Type in ${langB}...`}
                                 value={inputB}
                                 onChange={(e) => setInputB(e.target.value)}

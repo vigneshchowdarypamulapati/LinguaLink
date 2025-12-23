@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Lock, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config/api';
 import { motion } from 'framer-motion';
 
 const ResetPassword: React.FC = () => {
-    const [searchParams] = useSearchParams();
+    const { token } = useParams<{ token: string }>();
     const navigate = useNavigate();
-    const token = searchParams.get('token');
 
     const [newPass, setNewPass] = useState('');
     const [confirmPass, setConfirmPass] = useState('');
@@ -26,13 +25,20 @@ const ResetPassword: React.FC = () => {
         setStatus('loading');
         setMessage('');
         try {
-            await axios.post(`${API_BASE_URL}/auth/reset-password`, { token, newPass });
-            setStatus('success');
-            setMessage('Password has been reset successfully!');
-            setTimeout(() => navigate('/login'), 3000);
+            // Call backend directly
+            const backendUrl = import.meta.env.DEV ? 'http://localhost:8000' : API_BASE_URL;
+            const response = await axios.post(`${backendUrl}/auth/reset-password`, { token, newPassword: newPass });
+            if (response.data.status === 'success') {
+                setStatus('success');
+                setMessage('Password has been reset successfully!');
+                setTimeout(() => navigate('/login'), 3000);
+            } else {
+                setStatus('error');
+                setMessage(response.data.message || 'Failed to reset password.');
+            }
         } catch (error: any) {
             setStatus('error');
-            setMessage(error.response?.data?.error || 'Failed to reset password.');
+            setMessage(error.response?.data?.message || 'Failed to reset password.');
         }
     };
 

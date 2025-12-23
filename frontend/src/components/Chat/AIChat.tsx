@@ -40,7 +40,7 @@ const AIChat: React.FC = () => {
                 messages: contextMessages
             });
 
-            const aiMsg: Message = { role: 'assistant', content: res.data.reply };
+            const aiMsg: Message = { role: 'assistant', content: res.data.message };
             setMessages(prev => [...prev, aiMsg]);
 
         } catch (error) {
@@ -135,7 +135,7 @@ const AIChat: React.FC = () => {
                                             ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-2xl rounded-tr-none'
                                             : `${isDarkMode ? 'bg-slate-800 text-slate-100' : 'bg-white text-slate-800'} rounded-2xl rounded-tl-none border ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`
                                             }`}>
-                                            <p className="whitespace-pre-wrap leading-relaxed text-base">
+                                            <p className={`whitespace-pre-wrap leading-relaxed text-base ${msg.role === 'user' ? 'text-white' : (isDarkMode ? 'text-slate-100' : 'text-slate-800')}`}>
                                                 {msg.content}
                                             </p>
                                         </div>
@@ -176,7 +176,7 @@ const AIChat: React.FC = () => {
                                     }
                                 }}
                                 placeholder="Message AI Assistant..."
-                                className={`flex-1 p-4 bg-transparent border-none focus:ring-0 text-lg ${isDarkMode ? 'text-white placeholder-slate-400' : 'text-slate-900 placeholder-slate-400'}`}
+                                className={`flex-1 p-4 bg-transparent border-none focus:ring-0 text-lg font-medium ${isDarkMode ? 'text-white placeholder-slate-400' : 'text-slate-900 placeholder-slate-500'}`}
                                 disabled={isLoading}
                             />
                             <button

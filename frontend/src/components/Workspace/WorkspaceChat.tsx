@@ -39,6 +39,22 @@ const WorkspaceChat: React.FC<WorkspaceChatProps> = ({ onClose, recipientId, rec
 
     const languages = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Russian', 'Japanese', 'Chinese', 'Hindi'];
 
+    // Load user's saved language preference on mount
+    useEffect(() => {
+        const loadLanguagePreference = async () => {
+            try {
+                const res = await axios.get(`${API_BASE_URL}/api/user/profile`, { withCredentials: true });
+                if (res.data?.preferredLanguage) {
+                    setLanguage(res.data.preferredLanguage);
+                }
+            } catch (error) {
+                console.error("Failed to load language preference", error);
+                // Keep default 'English'
+            }
+        };
+        if (user) loadLanguagePreference();
+    }, [user]);
+
     useEffect(() => {
         if (!currentWorkspace || !user) return;
 
@@ -103,7 +119,7 @@ const WorkspaceChat: React.FC<WorkspaceChatProps> = ({ onClose, recipientId, rec
             if (!currentWorkspace) return;
             try {
                 const params = recipientId ? `?recipientId=${recipientId}&userId=${user?._id}` : '';
-                const res = await axios.get(`${API_BASE_URL}/api/workspaces/${currentWorkspace._id}/messages${params}`);
+                const res = await axios.get(`${API_BASE_URL}/api/workspaces/${currentWorkspace._id}/messages${params}`, { withCredentials: true });
                 setMessages(res.data);
             } catch (error) {
                 console.error("Failed to fetch chat history", error);
@@ -134,9 +150,16 @@ const WorkspaceChat: React.FC<WorkspaceChatProps> = ({ onClose, recipientId, rec
         setInput('');
     };
 
-    const handleLanguageSelect = (lang: string) => {
+    const handleLanguageSelect = async (lang: string) => {
         setLanguage(lang);
         setIsLangOpen(false);
+
+        // Save to backend for persistence
+        try {
+            await axios.put(`${API_BASE_URL}/api/user/language`, { language: lang }, { withCredentials: true });
+        } catch (error) {
+            console.error("Failed to save language preference:", error);
+        }
 
         if (currentWorkspace && user && socketRef.current) {
             socketRef.current.emit('update_language', {

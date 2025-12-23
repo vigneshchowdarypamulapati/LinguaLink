@@ -31,8 +31,14 @@ const Translator: React.FC = () => {
     const userEmail = user?.email;
     const [fileName, setFileName] = useState<string | null>(null);
     const [selectedHistoryItem, setSelectedHistoryItem] = useState<HistoryItem | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    // Recording State
+    const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setFileName(file.name);
+        setSelectedFile(file);
+    };
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
@@ -146,60 +152,69 @@ const Translator: React.FC = () => {
         }
     };
 
-    const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
 
-        setFileName(file.name); // Set file name
-
-        const formData = new FormData();
-        formData.append('document', file);
-        formData.append('targetLanguage', targetLanguage);
-
-        setIsLoading(true);
-        try {
-            const res = await axios.post(`${API_BASE_URL}/api/translate-doc`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-            setInputText(res.data.original);
-            alert("Failed to translate document.");
-        } finally {
-            setIsLoading(false);
-            e.target.value = '';
-        }
-    };
 
     const handleTranslate = async () => {
-        if (!inputText) return;
+        if (mode === 'text' && !inputText) return;
+        if (mode === 'document' && !selectedFile) return;
 
         setIsLoading(true);
         try {
-            const res = await axios.post(`${API_BASE_URL}/api/translate`, {
-                text: inputText,
-                sourceLang: 'Auto',
-                targetLang: targetLanguage,
-                workspaceId: currentWorkspace?._id
-            });
+            if (mode === 'document' && selectedFile) {
+                const formData = new FormData();
+                formData.append('document', selectedFile);
+                formData.append('targetLanguage', targetLanguage);
 
-            const translation = res.data.translatedText;
-            setTranslatedText(translation);
+                console.log('Sending document translation request...');
+                const res = await axios.post(`${API_BASE_URL}/api/translate-doc`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                console.log('Document translation response:', res.data);
 
-            // Save to history
-            if (userEmail) {
-                await axios.post(`${API_BASE_URL}/api/history`, {
-                    email: userEmail,
-                    original: inputText,
-                    translated: translation,
+                // Check for error in response
+                if (res.data.error) {
+                    setTranslatedText(`Error: ${res.data.error}`);
+                    return;
+                }
+
+                if (res.data.original) {
+                    setInputText(res.data.original);
+                    setMode('text'); // Switch to text mode to show extracted text
+                }
+                if (res.data.translated) {
+                    setTranslatedText(res.data.translated);
+                } else if (!res.data.original && !res.data.translated) {
+                    setTranslatedText('Error: No translation received from server.');
+                }
+
+            } else {
+                const res = await axios.post(`${API_BASE_URL}/api/translate`, {
+                    text: inputText,
                     sourceLang: 'Auto',
                     targetLang: targetLanguage,
                     workspaceId: currentWorkspace?._id
                 });
-                fetchHistory(userEmail);
-            }
+                const translation = res.data.translated;
+                setTranslatedText(translation);
 
-        } catch (error) {
+                // Save to history
+                if (userEmail) {
+                    await axios.post(`${API_BASE_URL}/api/history`, {
+                        email: userEmail,
+                        original: inputText,
+                        translated: translation,
+                        sourceLang: 'Auto',
+                        targetLang: targetLanguage,
+                        workspaceId: currentWorkspace?._id
+                    });
+                    fetchHistory(userEmail);
+                }
+            }
+        } catch (error: any) {
             console.error("Translation error:", error);
-            setTranslatedText("Error: Could not translate text.");
+            // Check if backend returned an error message
+            const errorMessage = error.response?.data?.error || error.message || "Could not translate text.";
+            setTranslatedText(`Error: ${errorMessage}`);
         } finally {
             setIsLoading(false);
         }
@@ -278,15 +293,15 @@ const Translator: React.FC = () => {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-4 md:p-8 pt-20 md:pt-8 relative custom-scrollbar">
-            <div className="max-w-5xl mx-auto space-y-8">
-                <header className="text-center space-y-2">
-                    <h1 className={`text-4xl md:text-5xl font-extrabold tracking-tight drop-shadow-lg ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>AI Translator</h1>
-                    <p className={`text-lg font-light ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Break language barriers instantly</p>
+        <div className="h-full flex flex-col overflow-hidden p-4 md:p-6 pt-16 md:pt-4">
+            <div className="max-w-7xl w-full mx-auto flex flex-col flex-1 overflow-hidden gap-3">
+                <header className="text-center flex-shrink-0">
+                    <h1 className={`text-3xl md:text-4xl font-extrabold tracking-tight drop-shadow-lg ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>AI Translator</h1>
+                    <p className={`text-base font-light ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Break language barriers instantly</p>
                 </header>
 
                 {/* Mode Toggle */}
-                <div className="flex justify-center space-x-4 mb-4">
+                <div className="flex justify-center space-x-4 flex-shrink-0 mb-4">
                     <button
                         onClick={() => setMode('text')}
                         className={`flex items-center px-6 py-2 rounded-full transition-all ${mode === 'text' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/30' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
@@ -303,9 +318,9 @@ const Translator: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[300px]">
                     {/* Input Section */}
-                    <div className={`rounded-2xl p-6 relative group transition-all hover:border-cyan-400/30 hover:shadow-cyan-500/20 ${isDarkMode ? 'bg-slate-800/80 border border-white/10 backdrop-blur-xl' : 'glass'}`}>
+                    <div className={`rounded-2xl p-4 relative group transition-all hover:border-cyan-400/30 hover:shadow-cyan-500/20 flex flex-col min-h-0 ${isDarkMode ? 'bg-slate-800/80 border border-white/10 backdrop-blur-xl' : 'glass'}`}>
                         <div className="flex justify-between items-center mb-4">
                             <span className={`text-sm font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>
                                 {mode === 'text' ? 'Input' : 'Document Input'}
@@ -339,13 +354,13 @@ const Translator: React.FC = () => {
 
                         {mode === 'text' ? (
                             <textarea
-                                className={`w-full h-64 p-4 text-lg bg-transparent border-none focus:ring-0 resize-none placeholder-slate-500 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
+                                className={`w-full flex-1 p-4 text-lg bg-transparent border-none focus:ring-0 resize-none placeholder-slate-500 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
                                 placeholder={isRecording ? "Listening..." : "Enter text or upload audio..."}
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
                             />
                         ) : (
-                            <div className="w-full h-64 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:border-cyan-500/50 hover:bg-white/5 transition-all cursor-pointer relative">
+                            <div className="w-full flex-1 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:border-cyan-500/50 hover:bg-white/5 transition-all cursor-pointer relative">
                                 <input
                                     type="file"
                                     accept=".pdf,.txt"
@@ -370,7 +385,7 @@ const Translator: React.FC = () => {
                     </div>
 
                     {/* Output Section */}
-                    <div className={`rounded-2xl p-6 relative group transition-all hover:border-cyan-400/30 hover:shadow-cyan-500/20 ${isDarkMode ? 'bg-slate-800/80 border border-white/10 backdrop-blur-xl' : 'glass'}`}>
+                    <div className={`rounded-2xl p-4 relative group transition-all hover:border-cyan-400/30 hover:shadow-cyan-500/20 flex flex-col min-h-0 ${isDarkMode ? 'bg-slate-800/80 border border-white/10 backdrop-blur-xl' : 'glass'}`}>
                         <div className="flex justify-between items-center mb-4">
                             <select
                                 className={`text-sm font-semibold bg-transparent border-none focus:ring-0 cursor-pointer hover:text-white transition-colors [&>option]:text-slate-900 ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}
@@ -407,7 +422,7 @@ const Translator: React.FC = () => {
                                 </button>
                             </div>
                         </div>
-                        <div className={`w-full h-64 p-4 text-lg overflow-auto whitespace-pre-wrap ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        <div className={`w-full flex-1 p-4 text-lg overflow-auto whitespace-pre-wrap ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                             {isLoading ? (
                                 <div className="flex items-center justify-center h-full text-slate-400 animate-pulse">
                                     {mode === 'document' ? 'Processing Document...' : 'Translating...'}
@@ -419,20 +434,16 @@ const Translator: React.FC = () => {
                     </div>
                 </div>
 
-                {
-                    mode === 'text' && (
-                        <div className="flex justify-center pt-4">
-                            <button
-                                onClick={handleTranslate}
-                                disabled={isLoading || !inputText}
-                                className="flex items-center px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full shadow-lg hover:shadow-cyan-500/50 hover:from-cyan-400 hover:to-blue-400 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                            >
-                                <Send size={20} className="mr-2" />
-                                Translate Now
-                            </button>
-                        </div>
-                    )
-                }
+                <div className="flex justify-center pt-2 flex-shrink-0">
+                    <button
+                        onClick={handleTranslate}
+                        disabled={isLoading || (mode === 'text' ? !inputText : !selectedFile)}
+                        className="flex items-center px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full shadow-lg hover:shadow-cyan-500/50 hover:from-cyan-400 hover:to-blue-400 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    >
+                        <Send size={20} className="mr-2" />
+                        Translate Now
+                    </button>
+                </div>
 
                 {/* History Section */}
                 {
