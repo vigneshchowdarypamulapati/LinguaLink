@@ -76,22 +76,26 @@ router.post('/signup', validate('signup'), async (req, res) => {
 router.post('/signin', validate('signin'), async (req, res) => {
     const { email, pass } = req.body;
     try {
+        console.log('Signin attempt for:', email);
         const user = await User.findOne({ email });
         if (!user) {
+            console.log('User not found:', email);
             return res.json({ status: "error", message: "User not found" });
         }
         const isPasswordValid = await bcrypt.compare(pass, user.pass);
         if (!isPasswordValid) {
+            console.log('Invalid password for:', email);
             return res.json({ status: "error", message: "Invalid password" });
         }
         res.cookie("userId", user._id.toString(), cookieOptions);
+        console.log('Login successful for:', email);
         res.json({ 
             status: "Login successful", 
             user: { _id: user._id, email: user.email, fname: user.fname }
         });
     } catch (err) {
         console.error("Signin error:", err);
-        res.json({ status: "error", message: "Login failed" });
+        res.json({ status: "error", message: "Login failed: " + err.message });
     }
 });
 
