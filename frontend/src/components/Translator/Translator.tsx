@@ -45,7 +45,7 @@ const Translator: React.FC = () => {
 
 
 
-    const languages = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Russian', 'Japanese', 'Chinese', 'Hindi'];
+    const languages = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Russian', 'Japanese', 'Chinese', 'Hindi', 'Arabic', 'Korean', 'Turkish', 'Vietnamese', 'Thai'];
 
     useEffect(() => {
         if (userEmail) {

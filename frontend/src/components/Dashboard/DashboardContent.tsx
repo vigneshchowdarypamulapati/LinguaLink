@@ -199,7 +199,7 @@ const DashboardContent: React.FC = () => {
                                 <p className="text-sm text-[var(--color-text-secondary)]">Recent translations</p>
                             </div>
                             <div className="p-4 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
-                                <p className="text-2xl font-bold text-emerald-500">10+</p>
+                                <p className="text-2xl font-bold text-emerald-500">15+</p>
                                 <p className="text-sm text-[var(--color-text-secondary)]">Languages supported</p>
                             </div>
                             <div className="p-4 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">

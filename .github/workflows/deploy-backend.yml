@@ -20,6 +20,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: Backend
+        run: npm ci
+
+      - name: Lint check
+        working-directory: Backend
+        run: npx eslint . --ext .js --max-warnings 0
+        continue-on-error: true
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -37,7 +53,8 @@ jobs:
             --region us-central1 \
             --allow-unauthenticated \
             --port 8080 \
+            --set-env-vars "NODE_ENV=production" \
             --set-env-vars "MONGO_URL=${{ secrets.MONGO_URL }}" \
             --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
-            --set-env-vars "GROG_API_KEY=${{ secrets.GROG_API_KEY }}" \
-            --set-env-vars "HF_TOKEN=${{ secrets.HF_TOKEN }}"
+            --set-env-vars "EMAIL_USER=${{ secrets.EMAIL_USER }}" \
+            --set-env-vars "EMAIL_PASS=${{ secrets.EMAIL_PASS }}"

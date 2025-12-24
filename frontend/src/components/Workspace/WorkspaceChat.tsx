@@ -37,7 +37,7 @@ const WorkspaceChat: React.FC<WorkspaceChatProps> = ({ onClose, recipientId, rec
     const langMenuRef = useRef<HTMLDivElement>(null);
     const chatRef = useRef<HTMLDivElement>(null);
 
-    const languages = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Russian', 'Japanese', 'Chinese', 'Hindi'];
+    const languages = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Russian', 'Japanese', 'Chinese', 'Hindi', 'Arabic', 'Korean', 'Turkish', 'Vietnamese', 'Thai'];
 
     // Load user's saved language preference on mount
     useEffect(() => {
