@@ -1,13 +1,13 @@
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Cookie configuration with enhanced security
+// Note: sameSite must be 'none' for cross-origin (Firebase -> Cloud Run)
 const cookieOptions = {
     httpOnly: true,           // Prevent XSS access to cookies
     secure: isProduction,     // HTTPS only in production
-    sameSite: isProduction ? "strict" : "lax", // Strict for production, lax for dev
+    sameSite: isProduction ? "none" : "lax", // 'none' required for cross-origin in prod
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     path: '/',                // Cookie available for entire site
-    // signed: true,          // Enable if using cookie-parser with secret
 };
 
 // CORS configuration
