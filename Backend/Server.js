@@ -45,6 +45,18 @@ app.use('/api', apiLimiter, translateRoutes);
 app.use('/api/ai', apiLimiter, aiRoutes);
 app.use('/api/user', apiLimiter, userRoutes);
 
+// Route aliases for frontend compatibility
+app.use('/api/ai-chat', apiLimiter, (req, res, next) => {
+    // Redirect /api/ai-chat to /api/ai/chat
+    req.url = '/chat';
+    aiRoutes(req, res, next);
+});
+app.use('/api/bilingual-chat', apiLimiter, (req, res, next) => {
+    // Expose bilingual-chat at /api level
+    req.url = '/bilingual-chat' + req.url;
+    userRoutes(req, res, next);
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
