@@ -72,4 +72,5 @@ setupSocketHandlers(io);
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
     console.log(`Server Started On Port ${PORT} (with Socket.io)`);
+    console.log('Version: 1.0.1 - gemini-pro update');
 });
