@@ -10,7 +10,11 @@ router.post('/chat', async (req, res) => {
     try {
         const userId = req.cookies.userId;
         const { messages, chatId } = req.body;
-        const lastMessage = messages[messages.length - 1]?.content || "";
+        const lastMessage = messages?.[messages.length - 1]?.content || "";
+        
+        if (!lastMessage) {
+            return res.status(400).json({ error: "No message content provided" });
+        }
         
         if (!genAI) {
             return res.json({ 
@@ -19,39 +23,52 @@ router.post('/chat', async (req, res) => {
             });
         }
         
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const result = await model.generateContent(lastMessage);
-        const response = await result.response;
-        const aiMessage = response.text();
+        // Call Gemini API
+        let aiMessage;
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const result = await model.generateContent(lastMessage);
+            const response = await result.response;
+            aiMessage = response.text();
+        } catch (geminiError) {
+            console.error("Gemini API error:", geminiError);
+            return res.status(500).json({ 
+                error: "AI service error: " + (geminiError.message || "Unknown error"),
+                details: geminiError.status || null
+            });
+        }
 
         // Save to database if user is authenticated
         let savedChat = null;
         if (userId) {
-            if (chatId) {
-                // Update existing chat
-                savedChat = await AIChat.findByIdAndUpdate(
-                    chatId,
-                    { 
-                        $push: { 
-                            messages: [
-                                { role: 'user', content: lastMessage },
-                                { role: 'assistant', content: aiMessage }
-                            ]
-                        }
-                    },
-                    { new: true }
-                );
-            } else {
-                // Create new chat
-                const title = lastMessage.slice(0, 50) + (lastMessage.length > 50 ? '...' : '');
-                savedChat = await AIChat.create({
-                    userId,
-                    title,
-                    messages: [
-                        { role: 'user', content: lastMessage },
-                        { role: 'assistant', content: aiMessage }
-                    ]
-                });
+            try {
+                if (chatId) {
+                    savedChat = await AIChat.findByIdAndUpdate(
+                        chatId,
+                        { 
+                            $push: { 
+                                messages: [
+                                    { role: 'user', content: lastMessage },
+                                    { role: 'assistant', content: aiMessage }
+                                ]
+                            }
+                        },
+                        { new: true }
+                    );
+                } else {
+                    const title = lastMessage.slice(0, 50) + (lastMessage.length > 50 ? '...' : '');
+                    savedChat = await AIChat.create({
+                        userId,
+                        title,
+                        messages: [
+                            { role: 'user', content: lastMessage },
+                            { role: 'assistant', content: aiMessage }
+                        ]
+                    });
+                }
+            } catch (dbError) {
+                console.error("Database save error:", dbError);
+                // Still return the AI response even if save fails
             }
         }
 
