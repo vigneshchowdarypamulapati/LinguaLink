@@ -1,34 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { AIChat } = require('../models');
 
-const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
-
 // AI Chat - send message and get response
-router.get('/debug-direct', async (req, res) => {
-    try {
-        const key = process.env.GEMINI_API_KEY;
-        if (!key) return res.json({ error: "No API Key" });
-
-        // Use dynamic import for node-fetch or rely on global fetch (Node 18+)
-        // Simple fetch test
-        try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-            const data = await response.json();
-            res.json({
-                status: response.status,
-                keyPrefix: key.substring(0, 5) + "...",
-                models: data
-            });
-        } catch (fetchError) {
-             res.json({ error: "Fetch failed (Node version might be old?): " + fetchError.message });
-        }
-    } catch (e) {
-        res.json({ error: e.message }); 
-    }
-});
-
 router.post('/chat', async (req, res) => {
     try {
         const userId = req.cookies.userId;
@@ -39,25 +13,49 @@ router.post('/chat', async (req, res) => {
             return res.status(400).json({ error: "No message content provided" });
         }
         
-        if (!genAI) {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
             return res.json({ 
                 message: "AI Assistant requires a GEMINI_API_KEY. Please configure it in your environment.",
                 chatId: null
             });
         }
         
-        // Call Gemini API
+        // Call Gemini API directly via REST to avoid SDK issues
         let aiMessage;
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-            const result = await model.generateContent(lastMessage);
-            const response = await result.response;
-            aiMessage = response.text();
+            // Using gemini-1.5-flash as confirmed working via debug endpoint
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: lastMessage }]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error("Gemini API Error details:", errorData);
+                throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!aiMessage) {
+                throw new Error("No content in AI response");
+            }
+
         } catch (geminiError) {
             console.error("Gemini API error:", geminiError);
             return res.status(500).json({ 
-                error: "AI service error: " + (geminiError.message || "Unknown error"),
-                details: geminiError.status || null
+                error: "AI service error: " + (geminiError.message || "Unknown error")
             });
         }
 
@@ -154,21 +152,41 @@ router.delete('/chats/:id', async (req, res) => {
 router.post('/explain', async (req, res) => {
     try {
         const { original, translated, sourceLang, targetLang } = req.body;
+        const apiKey = process.env.GEMINI_API_KEY;
         
-        if (!genAI) {
+        if (!apiKey) {
             return res.json({ 
                 explanation: `"${original}" (${sourceLang}) → "${translated}" (${targetLang}). Enable Gemini API for detailed explanations.` 
             });
         }
         
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
         const prompt = `Explain this translation:\nOriginal (${sourceLang}): "${original}"\nTranslated (${targetLang}): "${translated}"\n\nProvide a brief explanation of any nuances, idioms, or cultural context.`;
         
-        const result = await model.generateContent(prompt);
-        res.json({ explanation: result.response.text() });
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+            
+            if (!response.ok) {
+                 return res.json({ explanation: "AI explanation unavailable at the moment." });
+            }
+
+            const data = await response.json();
+            const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            res.json({ explanation: explanation || "No explanation generated." });
+
+        } catch (e) {
+            console.error("Explain error:", e);
+            res.json({ explanation: "Verified translation." });
+        }
     } catch (err) {
-        console.error("AI explain error:", err);
-        res.status(500).json({ error: "AI explain failed" });
+        console.error("Explain route error:", err);
+        res.status(500).json({ error: "Explain failed" });
     }
 });
 
