@@ -83,7 +83,7 @@ const AIChat: React.FC = () => {
 
         try {
             const contextMessages = [...messages, userMsg].slice(-10);
-            const res = await axios.post(`${API_BASE_URL}/api/ai-chat`, {
+            const res = await axios.post(`${API_BASE_URL}/api/ai/chat`, {
                 messages: contextMessages,
                 chatId: currentChatId
             }, { withCredentials: true });
