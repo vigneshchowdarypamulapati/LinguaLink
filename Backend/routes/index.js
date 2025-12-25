@@ -3,5 +3,6 @@ module.exports = {
     workspaceRoutes: require('./workspace'),
     translateRoutes: require('./translate'),
     aiRoutes: require('./ai'),
-    userRoutes: require('./user')
+    userRoutes: require('./user'),
+    bilingualChatRoutes: require('./bilingualChat')
 };

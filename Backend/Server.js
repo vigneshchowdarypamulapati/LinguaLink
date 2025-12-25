@@ -13,7 +13,7 @@ const mongoose = require('mongoose');
 const { corsOptions } = require('./config');
 
 // Routes
-const { authRoutes, workspaceRoutes, translateRoutes, aiRoutes, userRoutes } = require('./routes');
+const { authRoutes, workspaceRoutes, translateRoutes, aiRoutes, userRoutes, bilingualChatRoutes } = require('./routes');
 
 // Middleware
 const { apiLimiter, authLimiter, translateLimiter } = require('./middleware/rateLimit');
@@ -47,7 +47,7 @@ app.use('/api/user', apiLimiter, userRoutes);
 
 // Route aliases for frontend compatibility
 app.use('/api/ai-chat', apiLimiter, aiRoutes); // /api/ai-chat/chat works the same as /api/ai/chat
-app.use('/api/bilingual-chat', apiLimiter, userRoutes);
+app.use('/api/bilingual-chat', apiLimiter, bilingualChatRoutes); // Dedicated routes at root
 
 // Health check endpoint
 app.get('/health', (req, res) => {
