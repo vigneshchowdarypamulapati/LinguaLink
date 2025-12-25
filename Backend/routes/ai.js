@@ -26,7 +26,7 @@ router.post('/chat', async (req, res) => {
         // Call Gemini API
         let aiMessage;
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
             const result = await model.generateContent(lastMessage);
             const response = await result.response;
             aiMessage = response.text();
@@ -138,7 +138,7 @@ router.post('/explain', async (req, res) => {
             });
         }
         
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
         const prompt = `Explain this translation:\nOriginal (${sourceLang}): "${original}"\nTranslated (${targetLang}): "${translated}"\n\nProvide a brief explanation of any nuances, idioms, or cultural context.`;
         
         const result = await model.generateContent(prompt);
