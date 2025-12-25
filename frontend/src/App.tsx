@@ -427,6 +427,9 @@ const App: React.FC = () => {
 
                             {/* Workspace Route - Full screen, no app sidebar */}
                             <Route path="/workspace/:id" element={<ProtectedRoute><WorkspaceView /></ProtectedRoute>} />
+
+                            {/* Catch-all: redirect unknown routes to login */}
+                            <Route path="*" element={<Navigate to="/login" replace />} />
                         </Routes>
                     </BrowserRouter>
                 </WorkspaceProvider>
