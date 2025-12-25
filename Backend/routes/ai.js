@@ -6,6 +6,36 @@ const { AIChat } = require('../models');
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 // AI Chat - send message and get response
+router.get('/models', async (req, res) => {
+    try {
+        if (!genAI) return res.json({ error: "No API Key" });
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // There isn't a direct listModels on the client instance in some versions, 
+        // but let's try accessing the model list if available or infer from error.
+        // Actually best way in SDK is usually separate, but let's try a simple generation test on known models.
+        
+        // Better: Try to list models using the API directly if SDK doesn't expose it easily in this version.
+        // The SDK usually does not expose listModels on the client object directly in older versions?
+        // Let's rely on checking specific models.
+        
+        const modelsToCheck = ["gemini-pro", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"];
+        const results = {};
+        
+        for (const m of modelsToCheck) {
+            try {
+                const model = genAI.getGenerativeModel({ model: m });
+                await model.generateContent("Test");
+                results[m] = "Available";
+            } catch (e) {
+                results[m] = e.message;
+            }
+        }
+        res.json(results);
+    } catch (e) {
+        res.json({ error: e.message }); 
+    }
+});
+
 router.post('/chat', async (req, res) => {
     try {
         const userId = req.cookies.userId;
