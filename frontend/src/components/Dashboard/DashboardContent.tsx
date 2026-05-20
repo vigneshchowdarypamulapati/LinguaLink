@@ -59,13 +59,22 @@ const DashboardContent: React.FC = () => {
             iconColor: "text-purple-600 dark:text-purple-400"
         },
         {
-            title: "AI Assistant",
-            description: "Get writing help, explanations, and language learning tips from our AI.",
+            title: "Flashcards",
+            description: "Practice your starred translations with spaced repetition learning.",
             icon: Bot,
-            path: "/ai-chat",
+            path: "/flashcards",
             iconBg: "bg-amber-100 dark:bg-amber-900/30",
             iconColor: "text-amber-600 dark:text-amber-400"
         }
+        // AI Assistant disabled temporarily
+        // {
+        //     title: "AI Assistant",
+        //     description: "Get writing help, explanations, and language learning tips from our AI.",
+        //     icon: Bot,
+        //     path: "/ai-chat",
+        //     iconBg: "bg-amber-100 dark:bg-amber-900/30",
+        //     iconColor: "text-amber-600 dark:text-amber-400"
+        // }
     ];
 
     // Fetch personal history

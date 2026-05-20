@@ -5,6 +5,9 @@ const { supportedLanguages, languageCodeMap } = require('../config');
 // Track user language preferences in memory
 const userLanguages = {};
 
+// Track online users (userId -> Set of socketIds)
+const onlineUsers = new Map();
+
 /**
  * Setup Socket.io event handlers
  */
@@ -15,14 +18,35 @@ function setupSocketHandlers(io) {
         // Join a workspace room
         socket.on('join_workspace', (workspaceId) => {
             socket.join(`workspace_${workspaceId}`);
+            socket.workspaceId = workspaceId;
             console.log(`Socket ${socket.id} joined workspace ${workspaceId}`);
+            
+            // Send current online users to the newly joined socket
+            const onlineUserIds = Array.from(onlineUsers.keys());
+            socket.emit('online_users', onlineUserIds);
         });
 
-        // Join user's personal room for DMs
+        // Join user's personal room for DMs and track online status
         socket.on('join_user', (userId) => {
             socket.join(`user_${userId}`);
             socket.userId = userId;
             console.log(`Socket ${socket.id} joined user room ${userId}`);
+            
+            // Track this user as online
+            if (!onlineUsers.has(userId)) {
+                onlineUsers.set(userId, new Set());
+            }
+            onlineUsers.get(userId).add(socket.id);
+            
+            // Broadcast to all workspaces that this user is now online
+            io.emit('user_status_change', { userId, isOnline: true });
+            console.log(`User ${userId} is now online`);
+        });
+
+        // Get list of currently online users
+        socket.on('get_online_users', () => {
+            const onlineUserIds = Array.from(onlineUsers.keys());
+            socket.emit('online_users', onlineUserIds);
         });
 
         // Update user's language preference
@@ -108,8 +132,23 @@ function setupSocketHandlers(io) {
 
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
+            
+            // Remove this socket from online tracking
+            if (socket.userId) {
+                const userSockets = onlineUsers.get(socket.userId);
+                if (userSockets) {
+                    userSockets.delete(socket.id);
+                    // If no more sockets for this user, they're offline
+                    if (userSockets.size === 0) {
+                        onlineUsers.delete(socket.userId);
+                        io.emit('user_status_change', { userId: socket.userId, isOnline: false });
+                        console.log(`User ${socket.userId} is now offline`);
+                    }
+                }
+            }
         });
     });
 }
 
-module.exports = { setupSocketHandlers, userLanguages };
+module.exports = { setupSocketHandlers, userLanguages, onlineUsers };
+

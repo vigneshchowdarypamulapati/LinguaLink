@@ -48,12 +48,20 @@ const AppLayout: React.FC = () => {
             iconColor: "text-purple-600 dark:text-purple-400"
         },
         {
-            title: "AI Assistant",
+            title: "Flashcards",
             icon: <Bot className="w-5 h-5" />,
-            path: "/ai-chat",
+            path: "/flashcards",
             iconBg: "bg-amber-100 dark:bg-amber-900/30",
             iconColor: "text-amber-600 dark:text-amber-400"
         },
+        // AI Assistant route disabled temporarily
+        // {
+        //     title: "AI Assistant",
+        //     icon: <Bot className="w-5 h-5" />,
+        //     path: "/ai-chat",
+        //     iconBg: "bg-amber-100 dark:bg-amber-900/30",
+        //     iconColor: "text-amber-600 dark:text-amber-400"
+        // },
         {
             title: "Settings",
             icon: <Settings className="w-5 h-5" />,

@@ -4,5 +4,6 @@ module.exports = {
     translateRoutes: require('./translate'),
     aiRoutes: require('./ai'),
     userRoutes: require('./user'),
-    bilingualChatRoutes: require('./bilingualChat')
+    bilingualChatRoutes: require('./bilingualChat'),
+    flashcardRoutes: require('./flashcard')
 };

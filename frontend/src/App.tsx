@@ -12,6 +12,7 @@ import Settings from './components/Settings/Settings';
 import AIChat from './components/Chat/AIChat';
 import ChatMode from './components/Chat/ChatMode';
 import WorkspaceView from './components/Workspace/WorkspaceView';
+import Flashcards from './components/Flashcards/Flashcards';
 import { Sun, Moon, Globe } from 'lucide-react';
 
 // Theme Toggle Button Component
@@ -423,6 +424,7 @@ const App: React.FC = () => {
                                 <Route path="/settings" element={<Settings />} />
                                 <Route path="/chat" element={<ChatMode />} />
                                 <Route path="/ai-chat" element={<AIChat />} />
+                                <Route path="/flashcards" element={<Flashcards />} />
                             </Route>
 
                             {/* Workspace Route - Full screen, no app sidebar */}

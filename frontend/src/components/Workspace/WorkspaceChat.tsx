@@ -64,8 +64,8 @@ const WorkspaceChat: React.FC<WorkspaceChatProps> = ({ onClose, recipientId, rec
         socketRef.current.on('connect', () => {
             setIsConnected(true);
             console.log("Connected to chat");
+            // Only join workspace for messaging - user presence is handled in WorkspaceView
             socketRef.current?.emit('join_workspace', currentWorkspace._id);
-            socketRef.current?.emit('join_user', user._id);
 
             // Sync current language preference
             socketRef.current?.emit('update_language', {
@@ -187,10 +187,6 @@ const WorkspaceChat: React.FC<WorkspaceChatProps> = ({ onClose, recipientId, rec
                         <h3 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                             {recipientName ? `@${recipientName}` : currentWorkspace.name}
                         </h3>
-                        <div className={`flex items-center text-xs ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
-                            <span className={`w-2 h-2 ${isConnected ? 'bg-green-400' : 'bg-red-400'} rounded-full mr-1`}></span>
-                            {isConnected ? 'Online' : 'Offline'}
-                        </div>
                     </div>
                 </div>
                 <div className="flex items-center space-x-2">

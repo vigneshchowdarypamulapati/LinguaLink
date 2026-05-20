@@ -135,14 +135,56 @@ router.put('/history/:id/favorite', async (req, res) => {
     }
 });
 
-// Transcribe audio (placeholder)
-router.post('/transcribe', async (req, res) => {
-    res.json({ text: "Audio transcription not yet configured. Please type your text." });
+// Transcribe audio using Gemini multimodal
+router.post('/transcribe', upload.single('audio'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No audio file uploaded" });
+        }
+
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            return res.json({ text: "Audio transcription requires GEMINI_API_KEY." });
+        }
+
+        // Convert audio to base64
+        const audioBase64 = req.file.buffer.toString('base64');
+        const mimeType = req.file.mimetype || 'audio/webm';
+
+        // Use Gemini 1.5 Flash for audio transcription
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: "Transcribe this audio. Return ONLY the transcribed text, nothing else." },
+                        { inline_data: { mime_type: mimeType, data: audioBase64 } }
+                    ]
+                }]
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            console.error("Gemini transcription error:", err);
+            return res.json({ text: "Could not transcribe audio. Please try again." });
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+        
+        res.json({ text: text || "No speech detected." });
+    } catch (err) {
+        console.error("Transcribe error:", err);
+        res.json({ text: "Transcription failed. Please type your message." });
+    }
 });
 
-// Text-to-speech (placeholder)
+// TTS endpoint - returns audio stream (using browser API on frontend instead)
 router.post('/tts', async (req, res) => {
-    res.status(501).json({ error: "TTS not yet configured" });
+    // TTS is handled on frontend using browser's SpeechSynthesis API for cross-browser support
+    res.status(200).json({ message: "Use browser SpeechSynthesis API for TTS" });
 });
 
 module.exports = router;

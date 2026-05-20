@@ -79,55 +79,62 @@ const Translator: React.FC = () => {
         }
     };
 
-    const toggleRecording = async () => {
-        if (isRecording) {
-            // Stop Recording
-            mediaRecorderRef.current?.stop();
-            setIsRecording(false);
-        } else {
-            // Start Recording
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const mediaRecorder = new MediaRecorder(stream);
-                mediaRecorderRef.current = mediaRecorder;
-                chunksRef.current = [];
+    const toggleRecording = () => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-                mediaRecorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) {
-                        chunksRef.current.push(e.data);
-                    }
-                };
-
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-                    const file = new File([audioBlob], "recording.webm", { type: 'audio/webm' });
-
-                    const formData = new FormData();
-                    formData.append('audio', file);
-
-                    setIsLoading(true);
-                    try {
-                        const res = await axios.post(`${API_BASE_URL}/api/transcribe`, formData, {
-                            headers: { 'Content-Type': 'multipart/form-data' },
-                        });
-                        setInputText(res.data.text);
-                    } catch (error) {
-                        console.error("Transcription error:", error);
-                        alert("Failed to transcribe audio.");
-                    } finally {
-                        setIsLoading(false);
-                        // Stop all tracks to release mic
-                        stream.getTracks().forEach(track => track.stop());
-                    }
-                };
-
-                mediaRecorder.start();
-                setIsRecording(true);
-            } catch (err) {
-                console.error("Error accessing microphone:", err);
-                alert("Could not access microphone.");
-            }
+        if (!SpeechRecognition) {
+            alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
+            return;
         }
+
+        if (isRecording) {
+            // Stop recognition
+            mediaRecorderRef.current?.stop?.();
+            (mediaRecorderRef.current as any)?.abort?.();
+            setIsRecording(false);
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        mediaRecorderRef.current = recognition as any;
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US'; // Default to English for input
+
+        let finalTranscript = '';
+
+        recognition.onstart = () => {
+            setIsRecording(true);
+            finalTranscript = '';
+        };
+
+        recognition.onresult = (event: any) => {
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript + ' ';
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            // Update input with both final and interim results for real-time feedback
+            setInputText((finalTranscript + interimTranscript).trim());
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error('Speech recognition error:', event.error);
+            setIsRecording(false);
+            if (event.error === 'not-allowed') {
+                alert('Microphone access denied. Please allow microphone permissions.');
+            }
+        };
+
+        recognition.onend = () => {
+            setIsRecording(false);
+        };
+
+        recognition.start();
     };
 
     const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

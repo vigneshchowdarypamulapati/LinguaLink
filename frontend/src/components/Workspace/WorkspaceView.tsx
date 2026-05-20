@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Hash, Users, User, UserPlus, X } from 'lucide-react';
 import axios from 'axios';
-import { API_BASE_URL } from '../../config/api';
+import { io, Socket } from 'socket.io-client';
+import { API_BASE_URL, SOCKET_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -27,6 +28,8 @@ const WorkspaceView: React.FC = () => {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteMessage, setInviteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+    const [socket, setSocket] = useState<Socket | null>(null);
 
     // Switch to this workspace when component mounts
     useEffect(() => {
@@ -48,6 +51,54 @@ const WorkspaceView: React.FC = () => {
         };
         fetchMembers();
     }, [currentWorkspace]);
+
+    // Socket.io connection for online status tracking - use ref to keep stable connection
+    useEffect(() => {
+        const userId = user?._id;
+        const workspaceId = currentWorkspace?._id;
+        if (!userId || !workspaceId) return;
+
+        // Create single socket connection
+        const newSocket = io(SOCKET_URL, {
+            reconnection: true,
+            reconnectionDelay: 1000,
+            transports: ['websocket', 'polling']
+        });
+
+        // Join user room to track this user as online
+        newSocket.on('connect', () => {
+            console.log('Socket connected:', newSocket.id);
+            newSocket.emit('join_user', userId);
+            newSocket.emit('join_workspace', workspaceId);
+            newSocket.emit('get_online_users');
+        });
+
+        // Listen for initial online users list
+        newSocket.on('online_users', (userIds: string[]) => {
+            setOnlineUsers(new Set(userIds));
+        });
+
+        // Listen for status changes
+        newSocket.on('user_status_change', ({ userId: changedUserId, isOnline }: { userId: string; isOnline: boolean }) => {
+            setOnlineUsers(prev => {
+                const updated = new Set(prev);
+                if (isOnline) {
+                    updated.add(changedUserId);
+                } else {
+                    updated.delete(changedUserId);
+                }
+                return updated;
+            });
+        });
+
+        setSocket(newSocket);
+
+        return () => {
+            newSocket.disconnect();
+        };
+        // Only run once when user and workspace IDs are available
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?._id, currentWorkspace?._id]);
 
     const handleBackToDashboard = () => {
         switchWorkspace('personal');
@@ -165,12 +216,18 @@ const WorkspaceView: React.FC = () => {
                                         : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-gray-100'
                                         }`}
                                 >
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${isDarkMode ? 'bg-slate-700 text-white' : 'bg-gray-200 text-slate-700'}`}>
-                                        {member.fname?.charAt(0).toUpperCase() || member.email?.charAt(0).toUpperCase()}
+                                    <div className="relative">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${isDarkMode ? 'bg-slate-700 text-white' : 'bg-gray-200 text-slate-700'}`}>
+                                            {member.fname?.charAt(0).toUpperCase() || member.email?.charAt(0).toUpperCase()}
+                                        </div>
+                                        {/* Online/Offline indicator */}
+                                        <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 ${isDarkMode ? 'border-slate-900' : 'border-white'} ${onlineUsers.has(member._id) ? 'bg-green-500' : 'bg-gray-400'}`}></span>
                                     </div>
-                                    <div className="text-left">
+                                    <div className="text-left flex-1">
                                         <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{member.fname || 'User'}</p>
-                                        <p className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{member.email}</p>
+                                        <p className={`text-xs ${onlineUsers.has(member._id) ? 'text-green-500' : isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            {onlineUsers.has(member._id) ? 'Online' : 'Offline'}
+                                        </p>
                                     </div>
                                 </button>
                             ))}
